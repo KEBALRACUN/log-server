@@ -1,75 +1,98 @@
-require('dotenv').config();
 const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const bodyParser = require('body-parser');
-const cors = require('cors');
 const mongoose = require('mongoose');
+const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+const PORT = 3000;
 
-// --- 1. KONEKSI DATABASE ---
-// Nanti URL database kita taruh di Environment Variable agar aman
-const mongoURI = process.env.MONGO_URI; 
+app.use(cors());
+app.use(express.json());
 
-if (!mongoURI) {
-    console.error("❌ FATAL ERROR: MONGO_URI belum disetting!");
-    process.exit(1);
-}
-
-mongoose.connect(mongoURI)
-    .then(() => console.log('✅ Terkoneksi ke MongoDB Atlas'))
-    .catch(err => console.error('❌ Gagal konek DB:', err));
-
-// Buat Skema Database (Struktur Data)
-const LogSchema = new mongoose.Schema({
+// 1. Schema Database
+const logSchema = new mongoose.Schema({
     level: String,
     message: String,
-    service: String,
     timestamp: { type: Date, default: Date.now }
 });
-const LogModel = mongoose.model('Log', LogSchema);
+const Log = mongoose.model('Log', logSchema);
 
-// --- 2. MIDDLEWARE ---
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(__dirname)); // Agar bisa baca file HTML/CSS
+// 2. Koneksi Database & Robot
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => {
+        console.log("✅ Terkoneksi ke MongoDB Atlas");
+        console.log("🤖 Robot Log Raw Mode aktif...");
 
-// --- 3. ROUTES ---
+        // ==========================================
+        // 🤖 ROBOT PENGIRIM PESAN TEKNIS (SISTEM)
+        // ==========================================
+        setInterval(async () => {
+            try {
+                // Tentukan Level (Lebih banyak INFO daripada ERROR, biar realistis)
+                const levels = ["INFO", "INFO", "INFO", "WARN", "ERROR"];
+                const rndLvl = levels[Math.floor(Math.random() * levels.length)];
+                
+                // Daftar Pesan ala System Admin / Server Log
+                const sysMessages = [
+                    "Starting Backup Manager 5.0.0 build 18268",
+                    "Operating System: Windows Server 2022 R2",
+                    "Architecture: amd64 / Processors Detected: 8",
+                    "Total Physical Memory: 16.0 GB / Free: 4.2 GB",
+                    "Database Service starting...",
+                    "Creating embedded database 10.8.2.2",
+                    "Object-Relational Mapping Service started",
+                    "Message Event Service wrapper starting",
+                    "General Service starting...",
+                    "Index 'STATEINDEX' already exists in schema",
+                    "Connection established to 192.168.1.55:27017",
+                    "Garbage Collection: freed 45MB in 12ms",
+                    "Packet received from 10.0.0.12, verifying checksum..."
+                ];
+                
+                // Pesan Error/Warn khusus
+                const errMessages = [
+                    "!!! missing resource message key=[InvalidCredentials]",
+                    "Connection timeout: remote host not responding",
+                    "Unsuccessful: create index stateIndex on Table",
+                    "Disk usage warning: Volume C: is 92% full"
+                ];
 
-// Endpoint Menerima Log
+                let pesanJadi = "";
+                if (rndLvl === "ERROR" || rndLvl === "WARN") {
+                     pesanJadi = errMessages[Math.floor(Math.random() * errMessages.length)];
+                } else {
+                     pesanJadi = sysMessages[Math.floor(Math.random() * sysMessages.length)];
+                }
+                
+                const logBaru = new Log({
+                    level: rndLvl,
+                    message: pesanJadi
+                });
+                
+                await logBaru.save();
+                // console.log("Log saved"); // Diamkan CMD biar bersih
+
+            } catch (e) { }
+        }, 1000); // Setiap 1 detik
+
+    }).catch(err => console.log("❌ Gagal konek DB:", err));
+
+// 3. API Routes
+app.get('/api/log', async (req, res) => {
+    const logs = await Log.find().sort({ timestamp: -1 }).limit(30);
+    res.json(logs);
+});
+
 app.post('/api/log', async (req, res) => {
-    try {
-        const newLog = new LogModel({
-            level: req.body.level || 'INFO',
-            message: req.body.message || 'No message',
-            service: req.body.service || 'Unknown'
-        });
-
-        // Simpan ke Database (Asynchronous)
-        await newLog.save();
-
-        // Pancarkan ke Web (Realtime)
-        io.emit('new_log', newLog);
-
-        res.status(200).send({ status: 'saved', id: newLog._id });
-    } catch (error) {
-        res.status(500).send({ error: 'Gagal menyimpan log' });
-    }
+    const newLog = new Log(req.body);
+    await newLog.save();
+    res.json(newLog);
 });
 
-// Endpoint untuk mengambil history log (saat pertama buka web)
-app.get('/api/history', async (req, res) => {
-    // Ambil 50 log terakhir
-    const logs = await LogModel.find().sort({ timestamp: -1 }).limit(50);
-    res.json(logs.reverse()); // Balik urutan agar yang lama di atas
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
 });
 
-// Jalankan Server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 Server berjalan di Port ${PORT}`);
+app.listen(PORT, () => {
+    console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
 });
-// Siap deploy ke Render

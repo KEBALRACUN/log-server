@@ -3,180 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Log Monitor v2.0</title>
+    <title>⚡ CYBER LOG MONITOR</title>
     <style>
-        /* --- RESET & BASIC STYLE --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body { 
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace; 
-            background-color: #121212; 
-            color: #e0e0e0; 
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden; /* Mencegah scroll di body utama */
+        /* --- 1. DASAR TAMPILAN (BACKGROUND & FONT) --- */
+        body {
+            background-color: #050505; /* Hitam pekat */
+            background-image: radial-gradient(circle, #1a1a1a 0%, #000000 90%); /* Gradasi halus */
+            color: #e0e0e0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 0;
+            padding: 20px;
+            height: 100vh; /* Full layar */
+            box-sizing: border-box;
+            overflow: hidden; /* Hilangkan scroll body, kita scroll di dalam container */
         }
 
-        /* --- HEADER --- */
-        header {
-            background-color: #1e1e1e;
-            padding: 15px 20px;
-            border-bottom: 2px solid #333;
+        /* --- 2. CONTAINER UTAMA (LAYAR MONITOR) --- */
+        .terminal-window {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            margin: 0 auto;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #0c0c0c;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.05); /* Glow biru tipis di pinggir */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* --- 3. HEADER ATAS (JUDUL & STATUS) --- */
+        .header {
+            background: #111;
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            border-radius: 8px 8px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            z-index: 10;
         }
-
-        h1 { font-size: 1.2rem; color: #fff; letter-spacing: 1px; }
         
-        /* Indikator Status (Online/Offline) */
+        .title { font-weight: bold; color: #fff; letter-spacing: 1px; }
+        
+        /* Indikator Live Berkedip */
         .status-badge {
-            font-size: 0.8rem;
-            padding: 5px 10px;
-            border-radius: 15px;
-            background-color: #333;
+            font-size: 10px;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #00ff00;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 5px;
         }
-        .status-dot {
-            width: 10px; height: 10px;
-            background-color: #555; /* Default abu-abu */
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .status-text { font-weight: bold; }
-
-        /* --- CONTAINER LOG UTAMA --- */
-        #log-container { 
-            flex: 1; /* Mengisi sisa ruang */
-            overflow-y: auto; /* Scrollable */
-            padding: 20px;
-            background: #0d0d0d;
-            scroll-behavior: smooth;
+        .dot {
+            width: 8px; height: 8px; background: #00ff00; border-radius: 50%;
+            animation: pulse 1.5s infinite;
         }
 
-        /* --- ITEM LOG --- */
-        .log-entry { 
-            margin-bottom: 6px; 
-            padding: 4px 8px;
-            border-left: 3px solid transparent; 
-            font-size: 0.95rem;
-            line-height: 1.4;
-            transition: background 0.2s;
+        /* --- 4. AREA LOG (TEMPAT TEKS MUNCUL) --- */
+        #log-container {
+            flex: 1; /* Isi sisa ruang */
+            padding: 15px;
+            overflow-y: auto; /* Scroll di sini */
+            display: flex;
+            flex-direction: column;
+            font-family: 'Consolas', monospace;
         }
-        .log-entry:hover { background-color: #1a1a1a; }
 
-        /* Elemen dalam log */
-        .ts { color: #6a9955; margin-right: 10px; font-size: 0.85rem; } /* Timestamp */
-        .svc { color: #569cd6; font-weight: bold; margin-right: 5px; } /* Service Name */
-        
-        /* Warna Level Log */
-        .lvl { font-weight: bold; margin-right: 5px; }
-        
-        .type-INFO  { border-left-color: #4ec9b0; }
-        .type-INFO .lvl { color: #4ec9b0; }
+        /* --- 5. GAYA BARIS LOG --- */
+        .log-line {
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a1a; /* Garis pemisah super tipis */
+            white-space: pre-wrap; /* Biar teks panjang turun ke bawah rapi */
+            animation: fadeIn 0.3s ease-in;
+            display: flex;
+            align-items: flex-start;
+        }
 
-        .type-WARN  { border-left-color: #ce9178; background-color: rgba(206, 145, 120, 0.1); }
-        .type-WARN .lvl { color: #ce9178; }
+        .timestamp { color: #569cd6; min-width: 140px; opacity: 0.7; }
+        .separator { color: #444; margin: 0 10px; }
+        .message { flex: 1; word-break: break-all; }
 
-        .type-ERROR { border-left-color: #f44747; background-color: rgba(244, 71, 71, 0.15); }
-        .type-ERROR .lvl { color: #f44747; }
-        .type-ERROR .msg { color: #ffadad; }
+        /* WARNA LEVEL & GLOW */
+        .INFO  { color: #61afef; text-shadow: 0 0 5px rgba(97, 175, 239, 0.3); } 
+        .WARN  { color: #e5c07b; }
+        .ERROR { color: #ff5555; text-shadow: 0 0 8px rgba(255, 85, 85, 0.6); font-weight: bold; }
+        .SUCCESS { color: #98c379; }
 
-        /* Scrollbar Kustom (biar ganteng) */
-        ::-webkit-scrollbar { width: 10px; }
-        ::-webkit-scrollbar-track { background: #1e1e1e; }
-        ::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        /* --- 6. CUSTOM SCROLLBAR (BIAR KEREN) --- */
+        #log-container::-webkit-scrollbar { width: 8px; }
+        #log-container::-webkit-scrollbar-track { background: #0c0c0c; }
+        #log-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        #log-container::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* ANIMASI */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>🖥️ SYSTEM LOG MONITOR</h1>
-        <div class="status-badge">
-            <span id="status-dot" class="status-dot"></span>
-            <span id="status-text" class="status-text">Connecting...</span>
+    <div class="terminal-window">
+        <div class="header">
+            <div class="title">🖥️ SYSTEM_MONITOR_V2.0</div>
+            <div class="status-badge"><div class="dot"></div> ONLINE - REALTIME</div>
         </div>
-    </header>
 
-    <div id="log-container">
-        <div style="color: #555; text-align: center; padding-top: 20px; font-style: italic;">
-            Menunggu data log...
-        </div>
+        <div id="log-container">
+            </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    
     <script>
-        const socket = io();
+        let existingLogIds = new Set();
         const container = document.getElementById('log-container');
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
 
-        // --- FUNGSI 1: Update Status Koneksi ---
-        socket.on('connect', () => {
-            statusDot.style.backgroundColor = '#4fd1c5'; // Hijau
-            statusText.innerText = 'LIVE CONNECTED';
-            statusText.style.color = '#4fd1c5';
-        });
+        async function ambilLog() {
+            try {
+                // Anti-Cache Trick
+                const uniqueUrl = '/api/log?t=' + new Date().getTime();
+                const response = await fetch(uniqueUrl);
+                const logs = await response.json(); 
+                
+                // Balik urutan (Lama -> Baru) agar log baru di bawah
+                const sortedLogs = logs.slice().reverse();
 
-        socket.on('disconnect', () => {
-            statusDot.style.backgroundColor = '#e53e3e'; // Merah
-            statusText.innerText = 'DISCONNECTED';
-            statusText.style.color = '#e53e3e';
-        });
+                let adaDataBaru = false;
 
-        // --- FUNGSI 2: Render Log ke Layar ---
-        function appendLog(data) {
-            // Hapus pesan "Menunggu data..." jika ini log pertama
-            if (container.children.length > 0 && container.children[0].style.textAlign === 'center') {
-                container.innerHTML = '';
-            }
+                sortedLogs.forEach(log => {
+                    if (!existingLogIds.has(log._id)) {
+                        existingLogIds.add(log._id);
+                        adaDataBaru = true;
 
-            const entry = document.createElement('div');
-            // Tambahkan class berdasarkan level (INFO, WARN, ERROR)
-            entry.className = `log-entry type-${data.level}`;
+                        // Format Waktu
+                        const dateObj = new Date(log.timestamp);
+                        const timeStr = dateObj.toTimeString().split(' ')[0]; // Ambil jam saja (HH:MM:SS)
+                        const ms = String(dateObj.getMilliseconds()).padStart(3, '0');
 
-            // Format Waktu (HH:MM:SS)
-            const dateObj = new Date(data.timestamp);
-            const timeStr = dateObj.toLocaleTimeString('id-ID', { hour12: false });
-            const dateStr = dateObj.toLocaleDateString('id-ID');
+                        // Padding Level
+                        let levelPad = log.level.padEnd(7, ' '); // Biar rata kiri
 
-            entry.innerHTML = `
-                <span class="ts">[${dateStr} ${timeStr}]</span>
-                <span class="svc">${data.service}</span>
-                <span class="lvl">${data.level}</span>
-                <span class="msg">${data.message}</span>
-            `;
+                        const div = document.createElement('div');
+                        div.className = 'log-line';
+                        
+                        div.innerHTML = `
+                            <span class="timestamp">${timeStr}.${ms}</span>
+                            <span class="${log.level}">${levelPad}</span>
+                            <span class="separator">│</span>
+                            <span class="message">${log.message}</span>
+                        `;
+                        
+                        container.appendChild(div);
+                    }
+                });
 
-            container.appendChild(entry);
-            
-            // Auto Scroll ke bawah
-            container.scrollTop = container.scrollHeight;
+                // Auto Scroll Cerdas: Hanya scroll kalau ada data baru
+                if (adaDataBaru) {
+                    container.scrollTo({
+                        top: container.scrollHeight,
+                        behavior: 'smooth' // Scrollnya meluncur halus
+                    });
+                }
+
+            } catch (err) { console.log("Connection unstable..."); }
         }
 
-        // --- FUNGSI 3: Ambil History Lama (Database) ---
-        fetch('/api/history')
-            .then(res => res.json())
-            .then(logs => {
-                if(logs.length > 0) {
-                    container.innerHTML = ''; // Clear loading message
-                    logs.forEach(log => appendLog(log));
-                }
-            })
-            .catch(err => console.error("Gagal ambil history:", err));
-
-        // --- FUNGSI 4: Dengarkan Log Baru (Realtime) ---
-        socket.on('new_log', (data) => {
-            appendLog(data);
-        });
-
+        setInterval(ambilLog, 1000);
+        ambilLog();
     </script>
 </body>
 </html>
