@@ -83,6 +83,20 @@ app.get('/api/log', async (req, res) => {
     res.json(logs);
 });
 
+
+// API BARU: Hapus Semua Log (Clear Data)
+app.delete('/api/log/clear', async (req, res) => {
+    try {
+        await Log.deleteMany({}); // Hapus semua dokumen di collection
+        console.log("🗑️ Database di-reset oleh user");
+        res.json({ success: true, message: "Semua log dihapus" });
+    } catch (err) {
+        res.status(500).json({ error: "Gagal menghapus" });
+    }
+});
+
+// ... kode route '/' di bawah ...
+
 app.post('/api/log', async (req, res) => {
     const newLog = new Log(req.body);
     await newLog.save();

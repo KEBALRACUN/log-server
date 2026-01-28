@@ -5,21 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚡ CYBER LOG MONITOR</title>
     <style>
-        /* --- 1. DASAR TAMPILAN (BACKGROUND & FONT) --- */
+        /* --- 1. DASAR TAMPILAN --- */
         body {
-            background-color: #050505; /* Hitam pekat */
-            background-image: radial-gradient(circle, #1a1a1a 0%, #000000 90%); /* Gradasi halus */
+            background-color: #050505;
+            background-image: radial-gradient(circle, #1a1a1a 0%, #000000 90%);
             color: #e0e0e0;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 13px;
             margin: 0;
             padding: 20px;
-            height: 100vh; /* Full layar */
+            height: 100vh;
             box-sizing: border-box;
-            overflow: hidden; /* Hilangkan scroll body, kita scroll di dalam container */
+            overflow: hidden;
         }
 
-        /* --- 2. CONTAINER UTAMA (LAYAR MONITOR) --- */
+        /* --- 2. CONTAINER UTAMA --- */
         .terminal-window {
             width: 100%;
             max-width: 1000px;
@@ -28,13 +28,13 @@
             border: 1px solid #333;
             border-radius: 8px;
             background-color: #0c0c0c;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.05); /* Glow biru tipis di pinggir */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.05);
             display: flex;
             flex-direction: column;
             position: relative;
         }
 
-        /* --- 3. HEADER ATAS (JUDUL & STATUS) --- */
+        /* --- 3. HEADER & TOOLBAR --- */
         .header {
             background: #111;
             padding: 10px 15px;
@@ -44,10 +44,45 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .title { font-weight: bold; color: #fff; letter-spacing: 1px; }
-        
-        /* Indikator Live Berkedip */
+
+        /* TOOLBAR PENCARIAN & TOMBOL */
+        .toolbar {
+            padding: 8px 15px;
+            background: #161616;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Input Search ala Hacker */
+        #search-input {
+            flex: 1;
+            background: #000;
+            border: 1px solid #333;
+            color: #00ff00;
+            padding: 6px 10px;
+            font-family: inherit;
+            outline: none;
+        }
+        #search-input::placeholder { color: #555; }
+        #search-input:focus { border-color: #00ff00; }
+
+        /* Tombol Clear (Merah) */
+        #btn-clear {
+            background: #220000;
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            padding: 6px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        #btn-clear:hover { background: #ff3333; color: white; }
+
+        /* Status Badge */
         .status-badge {
             font-size: 10px;
             background: rgba(0, 255, 0, 0.1);
@@ -64,11 +99,11 @@
             animation: pulse 1.5s infinite;
         }
 
-        /* --- 4. AREA LOG (TEMPAT TEKS MUNCUL) --- */
+        /* --- 4. AREA LOG --- */
         #log-container {
-            flex: 1; /* Isi sisa ruang */
+            flex: 1;
             padding: 15px;
-            overflow-y: auto; /* Scroll di sini */
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
             font-family: 'Consolas', monospace;
@@ -77,10 +112,10 @@
         /* --- 5. GAYA BARIS LOG --- */
         .log-line {
             padding: 4px 0;
-            border-bottom: 1px solid #1a1a1a; /* Garis pemisah super tipis */
-            white-space: pre-wrap; /* Biar teks panjang turun ke bawah rapi */
+            border-bottom: 1px solid #1a1a1a;
+            white-space: pre-wrap;
             animation: fadeIn 0.3s ease-in;
-            display: flex;
+            display: flex; /* Flex agar search filter rapi */
             align-items: flex-start;
         }
 
@@ -88,19 +123,16 @@
         .separator { color: #444; margin: 0 10px; }
         .message { flex: 1; word-break: break-all; }
 
-        /* WARNA LEVEL & GLOW */
         .INFO  { color: #61afef; text-shadow: 0 0 5px rgba(97, 175, 239, 0.3); } 
         .WARN  { color: #e5c07b; }
         .ERROR { color: #ff5555; text-shadow: 0 0 8px rgba(255, 85, 85, 0.6); font-weight: bold; }
         .SUCCESS { color: #98c379; }
 
-        /* --- 6. CUSTOM SCROLLBAR (BIAR KEREN) --- */
+        /* SCROLLBAR */
         #log-container::-webkit-scrollbar { width: 8px; }
         #log-container::-webkit-scrollbar-track { background: #0c0c0c; }
         #log-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        #log-container::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* ANIMASI */
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
@@ -111,7 +143,12 @@
     <div class="terminal-window">
         <div class="header">
             <div class="title">🖥️ SYSTEM_MONITOR_V2.0</div>
-            <div class="status-badge"><div class="dot"></div> ONLINE - REALTIME</div>
+            <div class="status-badge"><div class="dot"></div> ONLINE</div>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="search-input" placeholder="> Filter logs (e.g. ERROR, Database, Memory)...">
+            <button id="btn-clear">[X] CLEAR LOGS</button>
         </div>
 
         <div id="log-container">
@@ -121,35 +158,65 @@
     <script>
         let existingLogIds = new Set();
         const container = document.getElementById('log-container');
+        const searchInput = document.getElementById('search-input');
 
+        // --- FUNGSI SEARCH / FILTER ---
+        searchInput.addEventListener('input', function() {
+            const filterText = this.value.toLowerCase();
+            const logs = document.querySelectorAll('.log-line');
+            
+            logs.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(filterText)) {
+                    row.style.display = "flex"; // Munculkan
+                } else {
+                    row.style.display = "none"; // Sembunyikan
+                }
+            });
+        });
+
+        // --- FUNGSI CLEAR LOGS ---
+        document.getElementById('btn-clear').addEventListener('click', async () => {
+            if(confirm("⚠️ PERINGATAN SISTEM: \nAnda yakin ingin menghapus SEMUA data log?")) {
+                try {
+                    // Panggil API delete di server
+                    await fetch('/api/log/clear', { method: 'DELETE' });
+                    
+                    // Bersihkan layar
+                    container.innerHTML = ''; 
+                    existingLogIds.clear(); 
+                    console.log("System purged.");
+                } catch (e) {
+                    alert("Gagal menghapus database.");
+                }
+            }
+        });
+
+        // --- FUNGSI UTAMA AMBIL DATA ---
         async function ambilLog() {
             try {
-                // Anti-Cache Trick
                 const uniqueUrl = '/api/log?t=' + new Date().getTime();
                 const response = await fetch(uniqueUrl);
                 const logs = await response.json(); 
                 
-                // Balik urutan (Lama -> Baru) agar log baru di bawah
                 const sortedLogs = logs.slice().reverse();
-
                 let adaDataBaru = false;
+                const filterText = searchInput.value.toLowerCase(); // Cek apa user lagi searching?
 
                 sortedLogs.forEach(log => {
                     if (!existingLogIds.has(log._id)) {
                         existingLogIds.add(log._id);
                         adaDataBaru = true;
 
-                        // Format Waktu
                         const dateObj = new Date(log.timestamp);
-                        const timeStr = dateObj.toTimeString().split(' ')[0]; // Ambil jam saja (HH:MM:SS)
+                        const timeStr = dateObj.toTimeString().split(' ')[0]; 
                         const ms = String(dateObj.getMilliseconds()).padStart(3, '0');
-
-                        // Padding Level
-                        let levelPad = log.level.padEnd(7, ' '); // Biar rata kiri
+                        let levelPad = log.level.padEnd(7, ' ');
 
                         const div = document.createElement('div');
                         div.className = 'log-line';
                         
+                        // Gabungkan teks untuk keperluan search nanti
                         div.innerHTML = `
                             <span class="timestamp">${timeStr}.${ms}</span>
                             <span class="${log.level}">${levelPad}</span>
@@ -157,19 +224,24 @@
                             <span class="message">${log.message}</span>
                         `;
                         
+                        // LOGIKA SEARCH REALTIME:
+                        // Kalau user sedang ngetik "ERROR", log baru yang bukan "ERROR" langsung disembunyikan
+                        if (filterText && !div.innerText.toLowerCase().includes(filterText)) {
+                            div.style.display = 'none';
+                        }
+
                         container.appendChild(div);
                     }
                 });
 
-                // Auto Scroll Cerdas: Hanya scroll kalau ada data baru
                 if (adaDataBaru) {
-                    container.scrollTo({
-                        top: container.scrollHeight,
-                        behavior: 'smooth' // Scrollnya meluncur halus
-                    });
+                    // Hanya scroll kalau user TIDAK sedang mencari sesuatu (supaya gak ganggu fokus)
+                    if (!filterText) {
+                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                    }
                 }
 
-            } catch (err) { console.log("Connection unstable..."); }
+            } catch (err) { }
         }
 
         setInterval(ambilLog, 1000);
