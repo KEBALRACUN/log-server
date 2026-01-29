@@ -9,9 +9,6 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- SESSION MEMORY ---
-let activeSessions = []; 
-
 // --- DATABASE ---
 const logSchema = new mongoose.Schema({
     level: String, method: String, url: String,
@@ -26,7 +23,8 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- LOGGER MIDDLEWARE ---
 app.use(async (req, res, next) => {
-    if (req.url.includes('/api/log')) return next(); // Jangan catat request dashboard
+    // Jangan catat request yang meminta data log (biar gak looping)
+    if (req.url.includes('/api/logs')) return next(); 
 
     const start = Date.now();
     res.on('finish', async () => {
@@ -36,65 +34,48 @@ app.use(async (req, res, next) => {
         // Klasifikasi Level Log
         let level = "INFO";
         if (status >= 500) level = "ERROR";
-        else if (status >= 400 || req.url.includes('admin')) level = "WARN"; // Admin access is suspicious
+        else if (status >= 400 || req.url.includes('admin')) level = "WARN"; 
         else if (status >= 200) level = "SUCCESS";
 
-        // Filter log spam (opsional: matikan jika ingin mencatat semuanya)
-        if (req.url === '/api/log' && status === 401) return;
-
         try {
+            // Hapus check req.url === '/api/log' disini karena sudah di filter diatas
             await Log.create({
                 level, method: req.method, url: req.url,
                 status: status, ip: req.headers['x-forwarded-for'] || req.ip || '::1',
-                message: `${req.method} ${req.url} - Status: ${status} [${duration}ms] - ${req.get('User-Agent')}`
+                message: `${req.method} ${req.url} - Status: ${status} [${duration}ms]`
             });
         } catch (e) { console.error(e); }
     });
     next();
 });
 
-// --- ROUTES ---
-app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-app.get('/home', (req, res) => res.send('<h1>Welcome Home</h1>'));
-app.get('/products', (req, res) => res.json({ id: 1, name: "CyberDeck v2" }));
-app.get('/contact', (req, res) => res.send('Contact Us'));
-
-// 🚫 Forbidden Areas (Untuk memancing log WARN)
+// --- ROUTES BIASA (Pancingan Bot) ---
+app.get('/', (req, res) => res.send('<h1>SYSTEM ONLINE</h1>'));
 app.get('/admin', (req, res) => res.status(403).send('🚫 ACCESS DENIED'));
-app.get('/config.json', (req, res) => res.status(404).send('Not Found'));
-app.post('/upload', (req, res) => res.status(500).send('Server Error: Disk Full'));
+app.get('/login', (req, res) => res.status(200).send('Login Page'));
+app.post('/upload', (req, res) => res.status(500).send('Server Error'));
 
-// --- API LOGIN ---
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === 'admin' && password === 'admin') {
-        const token = "SECURE_" + Date.now();
-        activeSessions.push(token);
-        res.json({ success: true, token });
-    } else {
-        res.status(401).json({ success: false, message: "Invalid Credentials" });
+// --- API UTAMA (Jalur Dashboard) ---
+
+// 1. Ambil Log (Tanpa Auth dulu biar lancar di Vercel)
+// Perhatikan: Pakai 'logs' (ada S nya)
+app.get('/api/logs', async (req, res) => {
+    try {
+        const logs = await Log.find().sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// --- API LOG (PROTECTED) ---
-const requireAuth = (req, res, next) => {
-    if (activeSessions.includes(req.headers['authorization'])) next();
-    else res.status(401).json({ error: "Session Expired" });
-};
-
-app.get('/api/log', requireAuth, async (req, res) => {
-    const logs = await Log.find().sort({ timestamp: -1 }).limit(50);
-    res.json(logs);
-});
-
-app.delete('/api/log/clear', requireAuth, async (req, res) => {
+// 2. Hapus Log
+app.delete('/api/logs/clear', async (req, res) => {
     await Log.deleteMany({});
     res.json({ success: true });
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 MARKAS PUSAT (SERVER) SIAP di http://localhost:${PORT}`);
-    console.log(`📡 Menunggu koneksi dari User atau Bot...`);
+    console.log(`🚀 MARKAS PUSAT SIAP`);
 });
 
 module.exports = app;
