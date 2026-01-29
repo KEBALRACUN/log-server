@@ -60,7 +60,7 @@
 
     <div class="terminal-window" id="dashboard">
         <div class="header">
-            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (STABLE)</div>
+            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (SILENT)</div>
             <button class="small-btn" onclick="logout()">LOGOUT</button>
         </div>
         <div class="toolbar">
@@ -78,42 +78,6 @@
     const LOG_API_URL = '/api/logs'; 
     const logContainer = document.getElementById('log-container');
     const statusText = document.getElementById('status-text');
-    
-    // Variabel untuk melacak jumlah log (agar bunyi kalau ada yg baru)
-    let previousLogCount = 0; 
-    
-    // --- AUDIO SYSTEM (Suara Hacker) ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playSound(type) {
-        // Browser butuh interaksi user dulu baru boleh bunyi
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        
-        if (type === 'success') {
-            // Suara "Blip" Halus
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime); // Volume kecil
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.1);
-        } else if (type === 'error') {
-            // Suara "Buzz" Error
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.3);
-        }
-    }
 
     // --- LOGIN SYSTEM ---
     if (localStorage.getItem('isLoggedIn') === 'true') {
@@ -125,12 +89,9 @@
         const p = document.getElementById('password').value;
         if (u === 'admin' && p === '1234') { 
             localStorage.setItem('isLoggedIn', 'true');
-            // Aktifkan Audio Context saat user klik Login
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             showDashboard();
         } else {
             document.getElementById('error-msg').style.display = 'block';
-            playSound('error'); // Bunyi error pas salah password
         }
     }
 
@@ -161,7 +122,6 @@
         link.setAttribute("download", "security_logs_" + new Date().getTime() + ".csv");
         document.body.appendChild(link);
         link.click();
-        playSound('success'); // Bunyi sukses pas download
     }
 
     // --- FITUR PURGE ---
@@ -170,7 +130,6 @@
 
         statusText.innerText = "INITIATING PURGE SEQUENCE...";
         statusText.style.color = "red";
-        playSound('error'); // Bunyi tegang
 
         try {
             const response = await fetch(LOG_API_URL + '/clear', { method: 'DELETE' });
@@ -178,7 +137,6 @@
                 logContainer.innerHTML = '';
                 statusText.innerText = "SYSTEM DATABASE PURGED";
                 statusText.style.color = "#00ff00";
-                previousLogCount = 0; // Reset counter
             } else {
                 alert("GAGAL MENGHAPUS!");
             }
@@ -188,7 +146,7 @@
         }
     }
 
-    // --- CORE LOOP ---
+    // --- CORE LOOP (OPTIMIZED & SILENT) ---
     async function fetchLogs() {
         if(document.getElementById('dashboard').style.display === 'none') return;
         
@@ -202,18 +160,6 @@
                  statusText.innerText = "NO DATA STREAM";
             } else {
                  statusText.innerText = "DATA RECEIVED: " + logs.length + " PACKETS";
-                 
-                 // LOGIC SUARA: Jika jumlah data bertambah, bunyikan suara
-                 if (logs.length > previousLogCount) {
-                     const newestLog = logs[0];
-                     if(newestLog.level === 'ERROR' || newestLog.level === 'WARN') {
-                         playSound('error');
-                     } else {
-                         playSound('success');
-                     }
-                 }
-                 previousLogCount = logs.length; // Update counter
-
                  logContainer.innerHTML = ''; 
                  
                  logs.forEach(log => {
