@@ -60,14 +60,14 @@
 
     <div class="terminal-window" id="dashboard">
         <div class="header">
-            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (STABLE)</div>
+            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (SILENT)</div>
             <button class="small-btn" onclick="logout()">LOGOUT</button>
         </div>
         <div class="toolbar">
-    <input type="text" id="search-input" placeholder="> grep logs...">
-    <button class="small-btn" onclick="exportLogs()">[⬇] EXPORT CSV</button>
-    <button class="small-btn" id="btn-clear" onclick="clearLogs()">[X] PURGE DATABASE</button>
-</div>
+            <input type="text" id="search-input" placeholder="> grep logs...">
+            <button class="small-btn" onclick="exportLogs()">[⬇] EXPORT CSV</button>
+            <button class="small-btn" id="btn-clear" onclick="clearLogs()">[X] PURGE DATABASE</button>
+        </div>
         <div id="log-container">
             <div style="color: yellow; padding: 10px;">> Connecting to secure server...</div>
         </div>
@@ -79,7 +79,7 @@
     const logContainer = document.getElementById('log-container');
     const statusText = document.getElementById('status-text');
 
-    // Cek status login saat halaman dibuka
+    // --- LOGIN SYSTEM ---
     if (localStorage.getItem('isLoggedIn') === 'true') {
         showDashboard();
     }
@@ -106,41 +106,52 @@
         location.reload();
     }
 
-    // --- FITUR PURGE YANG SUDAH DIPERBAIKI ---
+    // --- FITUR EXPORT CSV ---
+    function exportLogs() {
+        const rows = document.querySelectorAll('.log-entry');
+        if(rows.length === 0) { alert("Tidak ada data untuk di-export!"); return; }
+
+        let csvContent = "data:text/csv;charset=utf-8,LOG_DATA\n";
+        rows.forEach(row => {
+            csvContent += row.innerText.replace(/,/g, "") + "\n"; 
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "security_logs_" + new Date().getTime() + ".csv");
+        document.body.appendChild(link);
+        link.click();
+    }
+
+    // --- FITUR PURGE ---
     async function clearLogs() {
-        if(!confirm("⚠️ PERINGATAN: Yakin ingin MENGHAPUS SEMUA DATA LOG di Database?")) return;
+        if(!confirm("⚠️ PERINGATAN: Hapus semua data database?")) return;
 
         statusText.innerText = "INITIATING PURGE SEQUENCE...";
         statusText.style.color = "red";
 
         try {
-            const response = await fetch(LOG_API_URL + '/clear', { 
-                method: 'DELETE' 
-            });
-            
+            const response = await fetch(LOG_API_URL + '/clear', { method: 'DELETE' });
             if (response.ok) {
                 logContainer.innerHTML = '';
                 statusText.innerText = "SYSTEM DATABASE PURGED";
                 statusText.style.color = "#00ff00";
             } else {
-                alert("GAGAL MENGHAPUS! Server menolak perintah.");
+                alert("GAGAL MENGHAPUS!");
             }
-
         } catch (error) {
             console.error(error);
-            alert("ERROR: Tidak bisa menghubungi markas pusat.");
+            alert("ERROR KONEKSI.");
         }
     }
 
+    // --- CORE LOOP (OPTIMIZED & SILENT) ---
     async function fetchLogs() {
         if(document.getElementById('dashboard').style.display === 'none') return;
-
-        // Indikator loading kecil
-        statusText.innerText = "SYNCING DATA...";
         
         try {
             const response = await fetch(LOG_API_URL);
-            
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
             const logs = await response.json();
@@ -155,16 +166,14 @@
                     const logEntry = document.createElement('div');
                     logEntry.className = 'log-entry';
                     
-                    let color = '#00ff00'; // Default Hijau
-                    if(log.level === 'WARN') color = '#ffcc00'; // Kuning
-                    if(log.level === 'ERROR' || log.status >= 500) color = '#ff3333'; // Merah
+                    let color = '#00ff00'; 
+                    if(log.level === 'WARN') color = '#ffcc00'; 
+                    if(log.level === 'ERROR' || log.status >= 500) color = '#ff3333'; 
                     
                     logEntry.style.color = color;
                     
-                    let timeStr = "UNKNOWN TIME";
-                    try {
-                        timeStr = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false});
-                    } catch(e) {}
+                    let timeStr = "UNKNOWN";
+                    try { timeStr = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false}); } catch(e) {}
 
                     logEntry.innerText = `[${timeStr}] ${log.level} >> ${log.message} (${log.ip})`;
                     logContainer.appendChild(logEntry);
@@ -173,14 +182,12 @@
 
         } catch (error) {
             console.error('Fetch error:', error);
-            statusText.innerText = "CONNECTION LOST - RETRYING...";
+            statusText.innerText = "CONNECTION LOST...";
             statusText.style.color = "red";
         } finally {
-            // REFRESH CEPAT (0.8 Detik)
             setTimeout(fetchLogs, 800); 
         }
     }
     </script>
-    
 </body>
 </html>
