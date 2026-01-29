@@ -33,15 +33,9 @@
         /* --- LOG CONTAINER --- */
         #log-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; font-size: 12px; line-height: 1.6; }
         
-        /* --- ANIMASI & LOG ENTRY --- */
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
         .log-entry {
-            animation: slideIn 0.3s ease-out; /* Animasi keren di sini */
-            padding: 4px 0;
+            /* Animasi dihilangkan sedikit biar gak pusing kalau terlalu cepat */
+            padding: 2px 0;
             border-bottom: 1px solid #1a1a1a;
             font-family: 'Consolas', monospace;
         }
@@ -74,7 +68,7 @@
 
     <div class="terminal-window" id="dashboard">
         <div class="header">
-            <div class="title">🖥️ SYSTEM_MONITOR_V2.0</div>
+            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (TURBO MODE)</div>
             <button class="small-btn" onclick="logout()">LOGOUT</button>
         </div>
         <div class="toolbar">
@@ -89,20 +83,17 @@
     const logContainer = document.getElementById('log-container');
 
     // --- SYSTEM LOGIC ---
-    
-    // 1. Cek Login Otomatis (Biar gak capek login terus)
     if (localStorage.getItem('isLoggedIn') === 'true') {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('dashboard').style.display = 'flex';
-        fetchLogs(); // Mulai ambil data
+        fetchLogs(); 
     }
 
-    // 2. Fungsi Login
     function login() {
         const u = document.getElementById('username').value;
         const p = document.getElementById('password').value;
 
-        // Password Sederhana (Ganti jika mau)
+        // Login Admin / 1234
         if (u === 'admin' && p === '1234') {
             localStorage.setItem('isLoggedIn', 'true');
             document.getElementById('login-overlay').style.display = 'none';
@@ -113,13 +104,11 @@
         }
     }
 
-    // 3. Fungsi Logout
     function logout() {
         localStorage.removeItem('isLoggedIn');
         location.reload();
     }
 
-    // 4. Fungsi Hapus Log (Di Tampilan Saja)
     function clearLogs() {
         logContainer.innerHTML = '';
     }
@@ -127,43 +116,36 @@
     // --- CORE FETCHING ENGINE ---
 
     async function fetchLogs() {
-        // Cek kalau belum login, jangan jalan
         if(document.getElementById('dashboard').style.display === 'none') return;
 
         try {
             const response = await fetch(LOG_API_URL);
             const logs = await response.json();
 
-            // Render Ulang (Biar animasi jalan terus setiap refresh)
-            logContainer.innerHTML = '';
+            logContainer.innerHTML = ''; // Reset tampilan
 
             logs.forEach(log => {
                 const logEntry = document.createElement('div');
                 logEntry.className = 'log-entry';
                 
-                // Warna Hackers
                 let color = '#00ff00'; 
-                if(log.level === 'WARN') color = '#ffcc00'; // Kuning Emas
-                if(log.level === 'DANGER') color = '#ff3333'; // Merah Darah
+                if(log.level === 'WARN') color = '#ffcc00'; 
+                if(log.level === 'DANGER') color = '#ff3333'; 
                 
                 logEntry.style.color = color;
                 
-                // Format Waktu
                 const time = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false});
-                
                 logEntry.innerText = `[${time}] ${log.level} >> ${log.message} (${log.ip})`;
                 
                 logContainer.appendChild(logEntry);
             });
-            
-            // Auto Scroll ke Bawah
-            // logContainer.scrollTop = logContainer.scrollHeight;
 
         } catch (error) {
             console.error('Connection lost:', error);
         } finally {
-            // REFRESH SETIAP 2 DETIK (2000ms)
-            setTimeout(fetchLogs, 2000); 
+            // --- KECEPATAN TURBO ---
+            // 100ms = 0.1 Detik (Sangat Cepat)
+            setTimeout(fetchLogs, 100); 
         }
     }
     </script>
