@@ -1,7 +1,8 @@
 const axios = require('axios');
 
 // GANTI DENGAN URL SERVER KAMU
-const TARGET_URL = 'http://localhost:3000';
+// Contoh (Pakai link kamu sendiri ya!)
+const TARGET_URL = 'https://log-server-kebalracun-projects.vercel.app';
 
 // ==========================================
 // 🤖 DAFTAR PASUKAN BOT (BOT ARMY)
