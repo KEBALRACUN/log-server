@@ -60,11 +60,11 @@
 
     <div class="terminal-window" id="dashboard">
         <div class="header">
-            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (SILENT)</div>
+            <div class="title">🖥️ SYSTEM_MONITOR_V2.0 (SEARCH ENABLED)</div>
             <button class="small-btn" onclick="logout()">LOGOUT</button>
         </div>
         <div class="toolbar">
-            <input type="text" id="search-input" placeholder="> grep logs...">
+            <input type="text" id="search-input" placeholder="> grep logs..." onkeyup="fetchLogs()">
             <button class="small-btn" onclick="exportLogs()">[⬇] EXPORT CSV</button>
             <button class="small-btn" id="btn-clear" onclick="clearLogs()">[X] PURGE DATABASE</button>
         </div>
@@ -78,8 +78,8 @@
     const LOG_API_URL = '/api/logs'; 
     const logContainer = document.getElementById('log-container');
     const statusText = document.getElementById('status-text');
+    const searchInput = document.getElementById('search-input'); // Tangkap elemen search
 
-    // --- LOGIN SYSTEM ---
     if (localStorage.getItem('isLoggedIn') === 'true') {
         showDashboard();
     }
@@ -106,7 +106,6 @@
         location.reload();
     }
 
-    // --- FITUR EXPORT CSV ---
     function exportLogs() {
         const rows = document.querySelectorAll('.log-entry');
         if(rows.length === 0) { alert("Tidak ada data untuk di-export!"); return; }
@@ -124,13 +123,10 @@
         link.click();
     }
 
-    // --- FITUR PURGE ---
     async function clearLogs() {
         if(!confirm("⚠️ PERINGATAN: Hapus semua data database?")) return;
-
         statusText.innerText = "INITIATING PURGE SEQUENCE...";
         statusText.style.color = "red";
-
         try {
             const response = await fetch(LOG_API_URL + '/clear', { method: 'DELETE' });
             if (response.ok) {
@@ -146,7 +142,7 @@
         }
     }
 
-    // --- CORE LOOP (OPTIMIZED & SILENT) ---
+    // --- LOGIC UTAMA (SEARCH DITAMBAHKAN DI SINI) ---
     async function fetchLogs() {
         if(document.getElementById('dashboard').style.display === 'none') return;
         
@@ -154,10 +150,28 @@
             const response = await fetch(LOG_API_URL);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            const logs = await response.json();
+            let logs = await response.json();
+
+            // --- BAGIAN FILTER / SEARCH ---
+            const keyword = searchInput.value.toLowerCase();
+            
+            // Jika ada text di search box, saring datanya
+            if (keyword.length > 0) {
+                logs = logs.filter(log => {
+                    // Gabungkan semua info jadi satu string panjang biar gampang dicari
+                    const fullText = (log.message + " " + log.level + " " + log.ip).toLowerCase();
+                    return fullText.includes(keyword);
+                });
+            }
+            // -----------------------------
 
             if (logs.length === 0) {
-                 statusText.innerText = "NO DATA STREAM";
+                 if(keyword.length > 0) {
+                     statusText.innerText = "NO MATCH FOUND"; // Kalau search gak ketemu
+                 } else {
+                     statusText.innerText = "NO DATA STREAM"; // Kalau emang database kosong
+                 }
+                 logContainer.innerHTML = '';
             } else {
                  statusText.innerText = "DATA RECEIVED: " + logs.length + " PACKETS";
                  logContainer.innerHTML = ''; 
@@ -185,9 +199,13 @@
             statusText.innerText = "CONNECTION LOST...";
             statusText.style.color = "red";
         } finally {
-            setTimeout(fetchLogs, 800); 
+            // Kita hapus setTimeout recursive di sini biar gak numpuk request kalau lagi ngetik
+            // Gantinya, kita pake interval fix yang lebih aman
         }
     }
+
+    // Ubah cara refresh otomatis biar lebih smooth sama fitur search
+    setInterval(fetchLogs, 1000); // Refresh tiap 1 detik
     </script>
 </body>
 </html>
