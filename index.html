@@ -67,158 +67,48 @@
     </div>
 
     <script>
-        const loginOverlay = document.getElementById('login-overlay');
-        const dashboard = document.getElementById('dashboard');
-        const container = document.getElementById('log-container');
-        let pollingInterval = null;
-        let existingLogIds = new Set();
-        let isPaused = false;
+    const LOG_API_URL = '/api/logs'; // URL otomatis ikut domain
+    const logContainer = document.getElementById('log-container');
 
-        // --- 1. CEK TOKEN SAAT LOAD ---
-        // Kita tidak percaya localStorage begitu saja. Kita coba ambil data.
-        // Jika server menolak (401), berarti server habis restart.
-        const storedToken = localStorage.getItem('sessionToken');
-        if (storedToken) {
-            // Coba tampilkan dashboard dulu, nanti ambilLog yang akan validasi
-            showDashboard();
-        }
+    async function fetchLogs() {
+        try {
+            // 1. Ambil data
+            const response = await fetch(LOG_API_URL);
+            const logs = await response.json();
 
-        // --- 2. LOGIN SYSTEM ---
-        async function login() {
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            const err = document.getElementById('error-msg');
-            const btn = document.querySelector('.btn-login');
+            // 2. Kosongkan tampilan lama (atau bisa dibuat append biar lebih smooth)
+            logContainer.innerHTML = '';
 
-            btn.innerText = "VERIFYING...";
-            err.style.display = 'none';
-
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    // SIMPAN TOKEN DARI SERVER
-                    localStorage.setItem('sessionToken', data.token);
-                    showDashboard();
-                } else {
-                    err.style.display = 'block';
-                    err.innerText = "❌ " + (data.message || "INVALID CREDENTIALS");
-                    btn.innerText = "AUTHENTICATE";
-                }
-            } catch (e) {
-                err.style.display = 'block';
-                err.innerText = "⚠️ SERVER OFFLINE";
-                btn.innerText = "AUTHENTICATE";
-            }
-        }
-
-        function showDashboard() {
-            loginOverlay.style.display = 'none';
-            dashboard.style.display = 'flex';
-            ambilLog(); // Panggil sekali
-            // Jika interval belum jalan, jalankan
-            if (!pollingInterval) pollingInterval = setInterval(ambilLog, 500);
-        }
-
-        function logout() {
-            localStorage.removeItem('sessionToken');
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-            location.reload(); 
-        }
-
-        // --- 3. CORE: AMBIL DATA DENGAN TOKEN ---
-        async function ambilLog() {
-            if (isPaused) return;
-
-            const token = localStorage.getItem('sessionToken');
-            if (!token) return logout(); // Gak ada token? Keluar.
-
-            try {
-                const response = await fetch('/api/log', {
-                    headers: { 'Authorization': token } // 🔥 KIRIM TOKEN KE SERVER
-                });
-
-                // 🔥 FITUR UTAMA: SERVER RESTART PROTECTION
-                if (response.status === 401) {
-                    console.warn("Session Expired (Server Restarted)");
-                    logout(); // Tendang user ke login page
-                    return;
-                }
-
-                if (!response.ok) return; // Error lain (500), biarkan
-
-                const logs = await response.json(); 
-                const sortedLogs = logs.slice().reverse(); 
-                let adaDataBaru = false;
-                const filterText = document.getElementById('search-input').value.toLowerCase();
-
-                sortedLogs.forEach(log => {
-                    if (!existingLogIds.has(log._id)) {
-                        existingLogIds.add(log._id);
-                        adaDataBaru = true;
-
-                        const dateObj = new Date(log.timestamp);
-                        const timeStr = dateObj.toTimeString().split(' ')[0]; 
-                        const ms = String(dateObj.getMilliseconds()).padStart(3, '0');
-                        
-                        let statusClass = "INFO";
-                        if (log.status >= 500) statusClass = "ERROR";
-                        else if (log.status >= 400) statusClass = "WARN";
-                        else if (log.status >= 200) statusClass = "SUCCESS";
-
-                        const div = document.createElement('div');
-                        div.className = 'log-line';
-                        div.innerHTML = `
-                            <span class="timestamp">${timeStr}.${ms}</span>
-                            <span class="method-status ${statusClass}">[${log.method}] ${log.status}</span>
-                            <span class="separator">│</span>
-                            <span class="message">${log.message}</span>
-                        `;
-                        
-                        if (filterText && !div.innerText.toLowerCase().includes(filterText)) {
-                            div.style.display = 'none';
-                        }
-                        container.appendChild(div);
-                    }
-                });
-
-                if (adaDataBaru && !filterText) {
-                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-                }
-
-            } catch (err) { }
-        }
-
-        // Fitur Filter & Clear Log
-        document.getElementById('search-input').addEventListener('input', function() {
-            const filterText = this.value.toLowerCase();
-            document.querySelectorAll('.log-line').forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(filterText) ? "flex" : "none";
+            // 3. Masukkan log baru
+            logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                // Tambahkan warna berdasarkan level bahaya
+                let color = '#00ff00'; // Hijau (Info)
+                if(log.level === 'WARN') color = 'orange';
+                if(log.level === 'DANGER') color = 'red';
+                
+                logEntry.style.color = color;
+                logEntry.style.marginBottom = '5px';
+                logEntry.style.fontFamily = 'monospace';
+                
+                logEntry.innerText = `[${new Date(log.timestamp).toLocaleTimeString()}] ${log.level}: ${log.message} (${log.ip})`;
+                
+                logContainer.appendChild(logEntry);
             });
-        });
 
-        document.getElementById('btn-clear').addEventListener('click', async () => {
-            const token = localStorage.getItem('sessionToken');
-            if(confirm("⚠ WARNING: Purge all system logs?")) {
-                isPaused = true;
-                try {
-                    // Kirim token juga saat mau menghapus
-                    await fetch('/api/log/clear', { 
-                        method: 'DELETE',
-                        headers: { 'Authorization': token }
-                    });
-                    container.innerHTML = '';
-                    existingLogIds.clear();
-                } catch (e) { alert("Failed to clear"); } 
-                finally { setTimeout(() => { isPaused = false; }, 500); }
-            }
-        });
-    </script>
+        } catch (error) {
+            console.error('Gagal mengambil log:', error);
+        } finally {
+            // 4. KUNCI RAHASIA: 
+            // Panggil fungsi ini lagi HANYA SETELAH proses di atas selesai.
+            // Beri istirahat 0.1 detik biar nafas.
+            setTimeout(fetchLogs, 100); 
+        }
+    }
+
+    // Jalankan pertama kali
+    fetchLogs();
+</script>
 </body>
 </html>
