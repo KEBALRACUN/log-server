@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path'); // Penting untuk mencari file html
 require('dotenv').config();
 
 const app = express();
@@ -23,22 +24,20 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- LOGGER MIDDLEWARE ---
 app.use(async (req, res, next) => {
-    // Jangan catat request yang meminta data log (biar gak looping)
-    if (req.url.includes('/api/logs')) return next(); 
+    // Jangan catat request dashboard atau request icon
+    if (req.url.includes('/api/logs') || req.url.includes('favicon')) return next(); 
 
     const start = Date.now();
     res.on('finish', async () => {
         const duration = Date.now() - start;
         const status = res.statusCode;
         
-        // Klasifikasi Level Log
         let level = "INFO";
         if (status >= 500) level = "ERROR";
         else if (status >= 400 || req.url.includes('admin')) level = "WARN"; 
         else if (status >= 200) level = "SUCCESS";
 
         try {
-            // Hapus check req.url === '/api/log' disini karena sudah di filter diatas
             await Log.create({
                 level, method: req.method, url: req.url,
                 status: status, ip: req.headers['x-forwarded-for'] || req.ip || '::1',
@@ -49,16 +48,19 @@ app.use(async (req, res, next) => {
     next();
 });
 
-// --- ROUTES BIASA (Pancingan Bot) ---
-app.get('/', (req, res) => res.send('<h1>SYSTEM ONLINE</h1>'));
+// --- ROUTES UTAMA ---
+
+// INI PERBAIKANNYA: Kirim file index.html saat buka web utama
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Pancingan buat Bot
 app.get('/admin', (req, res) => res.status(403).send('🚫 ACCESS DENIED'));
 app.get('/login', (req, res) => res.status(200).send('Login Page'));
 app.post('/upload', (req, res) => res.status(500).send('Server Error'));
 
-// --- API UTAMA (Jalur Dashboard) ---
-
-// 1. Ambil Log (Tanpa Auth dulu biar lancar di Vercel)
-// Perhatikan: Pakai 'logs' (ada S nya)
+// --- API DATA ---
 app.get('/api/logs', async (req, res) => {
     try {
         const logs = await Log.find().sort({ timestamp: -1 }).limit(50);
@@ -68,7 +70,6 @@ app.get('/api/logs', async (req, res) => {
     }
 });
 
-// 2. Hapus Log
 app.delete('/api/logs/clear', async (req, res) => {
     await Log.deleteMany({});
     res.json({ success: true });
