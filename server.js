@@ -9,104 +9,92 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// 1. Schema Database
+// --- SESSION MEMORY ---
+let activeSessions = []; 
+
+// --- DATABASE ---
 const logSchema = new mongoose.Schema({
-    level: String,
-    message: String,
+    level: String, method: String, url: String,
+    status: Number, ip: String, message: String,
     timestamp: { type: Date, default: Date.now }
 });
 const Log = mongoose.model('Log', logSchema);
 
-// 2. Koneksi Database & Robot
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("✅ Terkoneksi ke MongoDB Atlas");
-        console.log("🤖 Robot Log Raw Mode aktif...");
+    .then(() => console.log("✅ SERVER ONLINE: Database Connected"))
+    .catch(err => console.log("❌ DB Error:", err));
 
-        // ==========================================
-        // 🤖 ROBOT PENGIRIM PESAN TEKNIS (SISTEM)
-        // ==========================================
-        setInterval(async () => {
-            try {
-                // Tentukan Level (Lebih banyak INFO daripada ERROR, biar realistis)
-                const levels = ["INFO", "INFO", "INFO", "WARN", "ERROR"];
-                const rndLvl = levels[Math.floor(Math.random() * levels.length)];
-                
-                // Daftar Pesan ala System Admin / Server Log
-                const sysMessages = [
-                    "Starting Backup Manager 5.0.0 build 18268",
-                    "Operating System: Windows Server 2022 R2",
-                    "Architecture: amd64 / Processors Detected: 8",
-                    "Total Physical Memory: 16.0 GB / Free: 4.2 GB",
-                    "Database Service starting...",
-                    "Creating embedded database 10.8.2.2",
-                    "Object-Relational Mapping Service started",
-                    "Message Event Service wrapper starting",
-                    "General Service starting...",
-                    "Index 'STATEINDEX' already exists in schema",
-                    "Connection established to 192.168.1.55:27017",
-                    "Garbage Collection: freed 45MB in 12ms",
-                    "Packet received from 10.0.0.12, verifying checksum..."
-                ];
-                
-                // Pesan Error/Warn khusus
-                const errMessages = [
-                    "!!! missing resource message key=[InvalidCredentials]",
-                    "Connection timeout: remote host not responding",
-                    "Unsuccessful: create index stateIndex on Table",
-                    "Disk usage warning: Volume C: is 92% full"
-                ];
+// --- LOGGER MIDDLEWARE ---
+app.use(async (req, res, next) => {
+    if (req.url.includes('/api/log')) return next(); // Jangan catat request dashboard
 
-                let pesanJadi = "";
-                if (rndLvl === "ERROR" || rndLvl === "WARN") {
-                     pesanJadi = errMessages[Math.floor(Math.random() * errMessages.length)];
-                } else {
-                     pesanJadi = sysMessages[Math.floor(Math.random() * sysMessages.length)];
-                }
-                
-                const logBaru = new Log({
-                    level: rndLvl,
-                    message: pesanJadi
-                });
-                
-                await logBaru.save();
-                // console.log("Log saved"); // Diamkan CMD biar bersih
+    const start = Date.now();
+    res.on('finish', async () => {
+        const duration = Date.now() - start;
+        const status = res.statusCode;
+        
+        // Klasifikasi Level Log
+        let level = "INFO";
+        if (status >= 500) level = "ERROR";
+        else if (status >= 400 || req.url.includes('admin')) level = "WARN"; // Admin access is suspicious
+        else if (status >= 200) level = "SUCCESS";
 
-            } catch (e) { }
-        }, 1000); // Setiap 1 detik
+        // Filter log spam (opsional: matikan jika ingin mencatat semuanya)
+        if (req.url === '/api/log' && status === 401) return;
 
-    }).catch(err => console.log("❌ Gagal konek DB:", err));
-
-// 3. API Routes
-app.get('/api/log', async (req, res) => {
-    const logs = await Log.find().sort({ timestamp: -1 }).limit(30);
-    res.json(logs);
+        try {
+            await Log.create({
+                level, method: req.method, url: req.url,
+                status: status, ip: req.headers['x-forwarded-for'] || req.ip || '::1',
+                message: `${req.method} ${req.url} - Status: ${status} [${duration}ms] - ${req.get('User-Agent')}`
+            });
+        } catch (e) { console.error(e); }
+    });
+    next();
 });
 
+// --- ROUTES ---
+app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
+app.get('/home', (req, res) => res.send('<h1>Welcome Home</h1>'));
+app.get('/products', (req, res) => res.json({ id: 1, name: "CyberDeck v2" }));
+app.get('/contact', (req, res) => res.send('Contact Us'));
 
-// API BARU: Hapus Semua Log (Clear Data)
-app.delete('/api/log/clear', async (req, res) => {
-    try {
-        await Log.deleteMany({}); // Hapus semua dokumen di collection
-        console.log("🗑️ Database di-reset oleh user");
-        res.json({ success: true, message: "Semua log dihapus" });
-    } catch (err) {
-        res.status(500).json({ error: "Gagal menghapus" });
+// 🚫 Forbidden Areas (Untuk memancing log WARN)
+app.get('/admin', (req, res) => res.status(403).send('🚫 ACCESS DENIED'));
+app.get('/config.json', (req, res) => res.status(404).send('Not Found'));
+app.post('/upload', (req, res) => res.status(500).send('Server Error: Disk Full'));
+
+// --- API LOGIN ---
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === 'admin' && password === 'admin') {
+        const token = "SECURE_" + Date.now();
+        activeSessions.push(token);
+        res.json({ success: true, token });
+    } else {
+        res.status(401).json({ success: false, message: "Invalid Credentials" });
     }
 });
 
-// ... kode route '/' di bawah ...
+// --- API LOG (PROTECTED) ---
+const requireAuth = (req, res, next) => {
+    if (activeSessions.includes(req.headers['authorization'])) next();
+    else res.status(401).json({ error: "Session Expired" });
+};
 
-app.post('/api/log', async (req, res) => {
-    const newLog = new Log(req.body);
-    await newLog.save();
-    res.json(newLog);
+app.get('/api/log', requireAuth, async (req, res) => {
+    const logs = await Log.find().sort({ timestamp: -1 }).limit(50);
+    res.json(logs);
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+app.delete('/api/log/clear', requireAuth, async (req, res) => {
+    await Log.deleteMany({});
+    res.json({ success: true });
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
+    console.log(`🚀 MARKAS PUSAT (SERVER) SIAP di http://localhost:${PORT}`);
+    console.log(`📡 Menunggu koneksi dari User atau Bot...`);
 });
+
+module.exports = app;

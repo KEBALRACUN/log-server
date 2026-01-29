@@ -3,205 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ CYBER LOG MONITOR</title>
+    <title>🔒 SECURE ACCESS GATE</title>
     <style>
-        /* --- 1. DASAR TAMPILAN --- */
-        body {
-            background-color: #050505;
-            background-image: radial-gradient(circle, #1a1a1a 0%, #000000 90%);
-            color: #e0e0e0;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 13px;
-            margin: 0;
-            padding: 20px;
-            height: 100vh;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-
-        /* --- 2. CONTAINER UTAMA --- */
-        .terminal-window {
-            width: 100%;
-            max-width: 1000px;
-            height: 90vh;
-            margin: 0 auto;
-            border: 1px solid #333;
-            border-radius: 8px;
-            background-color: #0c0c0c;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* --- 3. HEADER & TOOLBAR --- */
-        .header {
-            background: #111;
-            padding: 10px 15px;
-            border-bottom: 1px solid #333;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .title { font-weight: bold; color: #fff; letter-spacing: 1px; }
-
-        /* TOOLBAR PENCARIAN & TOMBOL */
-        .toolbar {
-            padding: 8px 15px;
-            background: #161616;
-            border-bottom: 1px solid #333;
-            display: flex;
-            gap: 10px;
-        }
-
-        /* Input Search ala Hacker */
-        #search-input {
-            flex: 1;
-            background: #000;
-            border: 1px solid #333;
-            color: #00ff00;
-            padding: 6px 10px;
-            font-family: inherit;
-            outline: none;
-        }
-        #search-input::placeholder { color: #555; }
-        #search-input:focus { border-color: #00ff00; }
-
-        /* Tombol Clear (Merah) */
-        #btn-clear {
-            background: #220000;
-            border: 1px solid #ff3333;
-            color: #ff3333;
-            padding: 6px 15px;
-            cursor: pointer;
-            font-family: inherit;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        #btn-clear:hover { background: #ff3333; color: white; }
-
-        /* Status Badge */
-        .status-badge {
-            font-size: 10px;
-            background: rgba(0, 255, 0, 0.1);
-            color: #00ff00;
-            padding: 4px 10px;
-            border-radius: 20px;
-            border: 1px solid #00ff00;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .dot {
-            width: 8px; height: 8px; background: #00ff00; border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-
-        /* --- 4. AREA LOG --- */
-        #log-container {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            font-family: 'Consolas', monospace;
-        }
-
-        /* --- 5. GAYA BARIS LOG --- */
-        .log-line {
-            padding: 4px 0;
-            border-bottom: 1px solid #1a1a1a;
-            white-space: pre-wrap;
-            animation: fadeIn 0.3s ease-in;
-            display: flex; /* Flex agar search filter rapi */
-            align-items: flex-start;
-        }
-
-        .timestamp { color: #569cd6; min-width: 140px; opacity: 0.7; }
+        /* CSS SAMA SEPERTI SEBELUMNYA */
+        body { background-color: #050505; background-image: radial-gradient(circle, #1a1a1a 0%, #000000 90%); color: #e0e0e0; font-family: 'Consolas', monospace; font-size: 13px; margin: 0; height: 100vh; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .login-box { border: 2px solid #00ff00; padding: 40px; width: 300px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); background: #0c0c0c; }
+        .login-title { color: #00ff00; font-size: 18px; margin-bottom: 20px; font-weight: bold; letter-spacing: 2px; animation: glitch 1.5s infinite; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; color: #555; }
+        .cyber-input { width: 100%; background: #111; border: 1px solid #333; color: #00ff00; padding: 10px; outline: none; box-sizing: border-box; }
+        .cyber-input:focus { border-color: #00ff00; }
+        .btn-login { width: 100%; background: #003300; color: #00ff00; border: 1px solid #00ff00; padding: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        .btn-login:hover { background: #00ff00; color: #000; }
+        .error-msg { color: #ff3333; margin-top: 15px; display: none; font-weight: bold; }
+        .terminal-window { display: none; width: 95%; max-width: 1000px; height: 90vh; margin: 20px auto; border: 1px solid #333; background-color: #0c0c0c; flex-direction: column; }
+        .header { background: #111; padding: 10px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .toolbar { padding: 8px 15px; background: #161616; border-bottom: 1px solid #333; display: flex; gap: 10px; }
+        #search-input { flex: 1; background: #000; border: 1px solid #333; color: #00ff00; padding: 6px 10px; outline: none; }
+        button.small-btn { background: #333; border: 1px solid #555; color: #ccc; padding: 5px 15px; cursor: pointer; }
+        button.small-btn:hover { background: #555; color: #fff; }
+        #btn-clear { border-color: #ff3333; color: #ff3333; background: #220000; }
+        #btn-clear:hover { background: #ff3333; color: #fff; }
+        #log-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; font-size: 12px; line-height: 1.6; }
+        .log-line { padding: 2px 0; border-bottom: 1px solid #1a1a1a; display: flex; }
+        .timestamp { color: #569cd6; min-width: 130px; opacity: 0.7; }
         .separator { color: #444; margin: 0 10px; }
-        .message { flex: 1; word-break: break-all; }
-
-        .INFO  { color: #61afef; text-shadow: 0 0 5px rgba(97, 175, 239, 0.3); } 
-        .WARN  { color: #e5c07b; }
-        .ERROR { color: #ff5555; text-shadow: 0 0 8px rgba(255, 85, 85, 0.6); font-weight: bold; }
-        .SUCCESS { color: #98c379; }
-
-        /* SCROLLBAR */
-        #log-container::-webkit-scrollbar { width: 8px; }
-        #log-container::-webkit-scrollbar-track { background: #0c0c0c; }
-        #log-container::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
+        .method-status { min-width: 120px; font-weight: bold; }
+        .message { flex: 1; word-break: break-all; color: #ccc; }
+        .INFO { color: #61afef; } .WARN { color: #e5c07b; } .ERROR { color: #ff5555; } .SUCCESS { color: #98c379; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        @keyframes glitch { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="terminal-window">
+    <div id="login-overlay">
+        <div class="login-box">
+            <div class="login-title">⚠️ RESTRICTED AREA</div>
+            <div class="input-group">
+                <label>CODENAME</label>
+                <input type="text" id="username" class="cyber-input" placeholder="admin">
+            </div>
+            <div class="input-group">
+                <label>PASSCODE</label>
+                <input type="password" id="password" class="cyber-input" placeholder="•••••">
+            </div>
+            <button class="btn-login" onclick="login()">AUTHENTICATE</button>
+            <div class="error-msg" id="error-msg">ACCESS DENIED</div>
+        </div>
+    </div>
+
+    <div class="terminal-window" id="dashboard">
         <div class="header">
             <div class="title">🖥️ SYSTEM_MONITOR_V2.0</div>
-            <div class="status-badge"><div class="dot"></div> ONLINE</div>
+            <button class="small-btn" onclick="logout()">LOGOUT</button>
         </div>
-
         <div class="toolbar">
-            <input type="text" id="search-input" placeholder="> Filter logs (e.g. ERROR, Database, Memory)...">
-            <button id="btn-clear">[X] CLEAR LOGS</button>
+            <input type="text" id="search-input" placeholder="> grep filter logs...">
+            <button class="small-btn" id="btn-clear">[X] PURGE LOGS</button>
         </div>
-
-        <div id="log-container">
-            </div>
+        <div id="log-container"></div>
     </div>
 
     <script>
-        let existingLogIds = new Set();
+        const loginOverlay = document.getElementById('login-overlay');
+        const dashboard = document.getElementById('dashboard');
         const container = document.getElementById('log-container');
-        const searchInput = document.getElementById('search-input');
+        let pollingInterval = null;
+        let existingLogIds = new Set();
+        let isPaused = false;
 
-        // --- FUNGSI SEARCH / FILTER ---
-        searchInput.addEventListener('input', function() {
-            const filterText = this.value.toLowerCase();
-            const logs = document.querySelectorAll('.log-line');
-            
-            logs.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                if (text.includes(filterText)) {
-                    row.style.display = "flex"; // Munculkan
-                } else {
-                    row.style.display = "none"; // Sembunyikan
-                }
-            });
-        });
+        // --- 1. CEK TOKEN SAAT LOAD ---
+        // Kita tidak percaya localStorage begitu saja. Kita coba ambil data.
+        // Jika server menolak (401), berarti server habis restart.
+        const storedToken = localStorage.getItem('sessionToken');
+        if (storedToken) {
+            // Coba tampilkan dashboard dulu, nanti ambilLog yang akan validasi
+            showDashboard();
+        }
 
-        // --- FUNGSI CLEAR LOGS ---
-        document.getElementById('btn-clear').addEventListener('click', async () => {
-            if(confirm("⚠️ PERINGATAN SISTEM: \nAnda yakin ingin menghapus SEMUA data log?")) {
-                try {
-                    // Panggil API delete di server
-                    await fetch('/api/log/clear', { method: 'DELETE' });
-                    
-                    // Bersihkan layar
-                    container.innerHTML = ''; 
-                    existingLogIds.clear(); 
-                    console.log("System purged.");
-                } catch (e) {
-                    alert("Gagal menghapus database.");
-                }
-            }
-        });
+        // --- 2. LOGIN SYSTEM ---
+        async function login() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const err = document.getElementById('error-msg');
+            const btn = document.querySelector('.btn-login');
 
-        // --- FUNGSI UTAMA AMBIL DATA ---
-        async function ambilLog() {
+            btn.innerText = "VERIFYING...";
+            err.style.display = 'none';
+
             try {
-                const uniqueUrl = '/api/log?t=' + new Date().getTime();
-                const response = await fetch(uniqueUrl);
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // SIMPAN TOKEN DARI SERVER
+                    localStorage.setItem('sessionToken', data.token);
+                    showDashboard();
+                } else {
+                    err.style.display = 'block';
+                    err.innerText = "❌ " + (data.message || "INVALID CREDENTIALS");
+                    btn.innerText = "AUTHENTICATE";
+                }
+            } catch (e) {
+                err.style.display = 'block';
+                err.innerText = "⚠️ SERVER OFFLINE";
+                btn.innerText = "AUTHENTICATE";
+            }
+        }
+
+        function showDashboard() {
+            loginOverlay.style.display = 'none';
+            dashboard.style.display = 'flex';
+            ambilLog(); // Panggil sekali
+            // Jika interval belum jalan, jalankan
+            if (!pollingInterval) pollingInterval = setInterval(ambilLog, 1000);
+        }
+
+        function logout() {
+            localStorage.removeItem('sessionToken');
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            location.reload(); 
+        }
+
+        // --- 3. CORE: AMBIL DATA DENGAN TOKEN ---
+        async function ambilLog() {
+            if (isPaused) return;
+
+            const token = localStorage.getItem('sessionToken');
+            if (!token) return logout(); // Gak ada token? Keluar.
+
+            try {
+                const response = await fetch('/api/log', {
+                    headers: { 'Authorization': token } // 🔥 KIRIM TOKEN KE SERVER
+                });
+
+                // 🔥 FITUR UTAMA: SERVER RESTART PROTECTION
+                if (response.status === 401) {
+                    console.warn("Session Expired (Server Restarted)");
+                    logout(); // Tendang user ke login page
+                    return;
+                }
+
+                if (!response.ok) return; // Error lain (500), biarkan
+
                 const logs = await response.json(); 
-                
-                const sortedLogs = logs.slice().reverse();
+                const sortedLogs = logs.slice().reverse(); 
                 let adaDataBaru = false;
-                const filterText = searchInput.value.toLowerCase(); // Cek apa user lagi searching?
+                const filterText = document.getElementById('search-input').value.toLowerCase();
 
                 sortedLogs.forEach(log => {
                     if (!existingLogIds.has(log._id)) {
@@ -211,41 +166,59 @@
                         const dateObj = new Date(log.timestamp);
                         const timeStr = dateObj.toTimeString().split(' ')[0]; 
                         const ms = String(dateObj.getMilliseconds()).padStart(3, '0');
-                        let levelPad = log.level.padEnd(7, ' ');
+                        
+                        let statusClass = "INFO";
+                        if (log.status >= 500) statusClass = "ERROR";
+                        else if (log.status >= 400) statusClass = "WARN";
+                        else if (log.status >= 200) statusClass = "SUCCESS";
 
                         const div = document.createElement('div');
                         div.className = 'log-line';
-                        
-                        // Gabungkan teks untuk keperluan search nanti
                         div.innerHTML = `
                             <span class="timestamp">${timeStr}.${ms}</span>
-                            <span class="${log.level}">${levelPad}</span>
+                            <span class="method-status ${statusClass}">[${log.method}] ${log.status}</span>
                             <span class="separator">│</span>
                             <span class="message">${log.message}</span>
                         `;
                         
-                        // LOGIKA SEARCH REALTIME:
-                        // Kalau user sedang ngetik "ERROR", log baru yang bukan "ERROR" langsung disembunyikan
                         if (filterText && !div.innerText.toLowerCase().includes(filterText)) {
                             div.style.display = 'none';
                         }
-
                         container.appendChild(div);
                     }
                 });
 
-                if (adaDataBaru) {
-                    // Hanya scroll kalau user TIDAK sedang mencari sesuatu (supaya gak ganggu fokus)
-                    if (!filterText) {
-                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-                    }
+                if (adaDataBaru && !filterText) {
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
                 }
 
             } catch (err) { }
         }
 
-        setInterval(ambilLog, 1000);
-        ambilLog();
+        // Fitur Filter & Clear Log
+        document.getElementById('search-input').addEventListener('input', function() {
+            const filterText = this.value.toLowerCase();
+            document.querySelectorAll('.log-line').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(filterText) ? "flex" : "none";
+            });
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', async () => {
+            const token = localStorage.getItem('sessionToken');
+            if(confirm("⚠ WARNING: Purge all system logs?")) {
+                isPaused = true;
+                try {
+                    // Kirim token juga saat mau menghapus
+                    await fetch('/api/log/clear', { 
+                        method: 'DELETE',
+                        headers: { 'Authorization': token }
+                    });
+                    container.innerHTML = '';
+                    existingLogIds.clear();
+                } catch (e) { alert("Failed to clear"); } 
+                finally { setTimeout(() => { isPaused = false; }, 500); }
+            }
+        });
     </script>
 </body>
 </html>
