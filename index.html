@@ -65,7 +65,7 @@
         </div>
         <div class="toolbar">
             <input type="text" id="search-input" placeholder="> grep logs...">
-            <button class="small-btn" id="btn-clear" onclick="clearLogs()">[X] PURGE</button>
+            <button class="small-btn" id="btn-clear" onclick="clearLogs()">[X] PURGE DATABASE</button>
         </div>
         <div id="log-container">
             <div style="color: yellow; padding: 10px;">> Connecting to secure server...</div>
@@ -86,7 +86,7 @@
     function login() {
         const u = document.getElementById('username').value;
         const p = document.getElementById('password').value;
-        if (u === 'admin' && p === '1234') { // Password Default
+        if (u === 'admin' && p === '1234') { 
             localStorage.setItem('isLoggedIn', 'true');
             showDashboard();
         } else {
@@ -105,13 +105,36 @@
         location.reload();
     }
 
-    function clearLogs() {
-        logContainer.innerHTML = '';
+    // --- FITUR PURGE YANG SUDAH DIPERBAIKI ---
+    async function clearLogs() {
+        if(!confirm("⚠️ PERINGATAN: Yakin ingin MENGHAPUS SEMUA DATA LOG di Database?")) return;
+
+        statusText.innerText = "INITIATING PURGE SEQUENCE...";
+        statusText.style.color = "red";
+
+        try {
+            const response = await fetch(LOG_API_URL + '/clear', { 
+                method: 'DELETE' 
+            });
+            
+            if (response.ok) {
+                logContainer.innerHTML = '';
+                statusText.innerText = "SYSTEM DATABASE PURGED";
+                statusText.style.color = "#00ff00";
+            } else {
+                alert("GAGAL MENGHAPUS! Server menolak perintah.");
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("ERROR: Tidak bisa menghubungi markas pusat.");
+        }
     }
 
     async function fetchLogs() {
         if(document.getElementById('dashboard').style.display === 'none') return;
 
+        // Indikator loading kecil
         statusText.innerText = "SYNCING DATA...";
         
         try {
@@ -121,12 +144,11 @@
             
             const logs = await response.json();
 
-            // Kalau data kosong
             if (logs.length === 0) {
                  statusText.innerText = "NO DATA STREAM";
             } else {
                  statusText.innerText = "DATA RECEIVED: " + logs.length + " PACKETS";
-                 logContainer.innerHTML = ''; // Reset tampilan
+                 logContainer.innerHTML = ''; 
                  
                  logs.forEach(log => {
                     const logEntry = document.createElement('div');
@@ -138,7 +160,6 @@
                     
                     logEntry.style.color = color;
                     
-                    // Format waktu agar aman
                     let timeStr = "UNKNOWN TIME";
                     try {
                         timeStr = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false});
@@ -154,8 +175,8 @@
             statusText.innerText = "CONNECTION LOST - RETRYING...";
             statusText.style.color = "red";
         } finally {
-            // REFRESH RATE: 2 Detik (Biar aman)
-            setTimeout(fetchLogs, 2000); 
+            // REFRESH CEPAT (0.8 Detik)
+            setTimeout(fetchLogs, 800); 
         }
     }
     </script>
