@@ -1,37 +1,64 @@
-const axios = require('axios');
+const dgram = require('dgram'); // Modul UDP (Bawaan Node.js)
+const axios = require('axios'); // Pengirim HTTP
 
-// GANTI DENGAN LINK VERCEL KAMU YANG BENAR
-const TARGET_URL = 'https://log-server-five.vercel.app'; 
+// ==========================================
+// ⚠️ KONFIGURASI TARGET ⚠️
+// Ganti dengan URL Vercel Komandan yang sudah dideploy
+const TARGET_URL = 'https://nama-project-kamu.vercel.app/api/logs'; 
+const LISTENING_PORT = 5140;
+// ==========================================
 
-const endpoints = [
-    { method: 'get', path: '/' },
-    { method: 'get', path: '/admin' }, // Ini akan bikin log WARN
-    { method: 'post', path: '/upload' }, // Ini akan bikin log ERROR
-    { method: 'get', path: '/login' },
-    { method: 'get', path: '/api/logs' }
-];
+const server = dgram.createSocket('udp4');
 
-async function attack() {
-    // Pilih target acak
-    const target = endpoints[Math.floor(Math.random() * endpoints.length)];
-    const fullUrl = `${TARGET_URL}${target.path}`;
+console.log('------------------------------------------------');
+console.log('   MIKROTIK TO VERCEL BRIDGE   ');
+console.log('   Mode: REALTIME MONITORING   ');
+console.log('------------------------------------------------');
+
+server.on('error', (err) => {
+  console.log(`[ERROR] Server error:\n${err.stack}`);
+  server.close();
+});
+
+server.on('message', (msg, rinfo) => {
+  const rawLog = msg.toString();
+  
+  // Tampilkan di terminal laptop (biar kelihatan ada aktivitas)
+  console.log(`[RADAR] ${rinfo.address} >> ${rawLog.substring(0, 50)}...`);
+
+  // Kirim ke Database (Vercel/MongoDB)
+  kirimKePusat(rawLog, rinfo.address);
+});
+
+server.on('listening', () => {
+  const address = server.address();
+  console.log(`📡 RADAR AKTIF! Menunggu data di UDP Port ${address.port}`);
+  console.log(`💻 IP Laptop ini untuk di-setting di MikroTik: (Lihat ipconfig)`);
+});
+
+server.bind(LISTENING_PORT);
+
+async function kirimKePusat(logMentah, ipRouter) {
+    // 1. Analisa Level Log (Warna)
+    let level = 'INFO';
+    const txt = logMentah.toLowerCase();
+    
+    if (txt.includes('error') || txt.includes('failure') || txt.includes('critical')) level = 'ERROR';
+    else if (txt.includes('warn') || txt.includes('firewall')) level = 'WARN';
+    else if (txt.includes('login') || txt.includes('user') || txt.includes('account')) level = 'AUTH';
+
+    // 2. Bersihkan Pesan (Hapus header syslog <30> dst)
+    // Biasanya format: "<30> system,info,account ..." -> Kita ambil isinya saja
+    let cleanMsg = logMentah.replace(/<[0-9]+>/g, '').trim();
 
     try {
-        console.log(`🚀 Mengirim paket ke: ${fullUrl}`);
-        if (target.method === 'get') {
-            await axios.get(fullUrl);
-        } else {
-            await axios.post(fullUrl, { data: 'sampah' });
-        }
-        console.log("✅ Sukses terkirim!");
+        // Tembak ke API Vercel
+        await axios.post(TARGET_URL, {
+            level: level,
+            message: cleanMsg,
+            ip: ipRouter
+        });
     } catch (error) {
-        // Error itu bagus, berarti server mencatatnya sebagai serangan
-        console.log(`💥 Server merespon: ${error.response ? error.response.status : 'Error Koneksi'}`);
+        console.error(`[GAGAL KIRIM] ${error.message}`);
     }
 }
-
-console.log("🔥 BOT DIAKTIFKAN: Mode Stabil (1 Detik/Tembakan)");
-
-// --- PENTING: JEDA WAKTU ---
-// Jalankan attack() setiap 1000ms (1 detik)
-setInterval(attack, 1000);
