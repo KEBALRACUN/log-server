@@ -72,13 +72,28 @@ app.post('/api/logs', async (req, res) => {
 });
 
 // 2. KIRIM DATA KE DASHBOARD (GET)
+// 2. KIRIM DATA KE DASHBOARD (GET)
+// [UPGRADED] Sekarang mengirim Total Count juga
 app.get('/api/logs', async (req, res) => {
     try {
         await connectDB();
-        // Ambil 50 log terakhir, urutkan dari yang terbaru
-        const logs = await Log.find().sort({ timestamp: -1 }).limit(50).lean(); 
-        res.json(logs);
-    } catch (err) { res.json([]); }
+        
+        // Ambil data log (tetap batasi 50 biar ringan)
+        const logs = await Log.find().sort({ timestamp: -1 }).limit(50).lean();
+        
+        // Hitung TOTAL SEMUA data di database
+        const totalCount = await Log.countDocuments(); 
+
+        // Kirim paket gabungan (Data + Total)
+        res.json({ 
+            logs: logs, 
+            total: totalCount 
+        });
+        
+    } catch (err) { 
+        console.error(err);
+        res.json({ logs: [], total: 0 }); 
+    }
 });
 
 // 3. HAPUS LOG (CLEAR)

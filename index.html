@@ -150,7 +150,9 @@
             const response = await fetch(LOG_API_URL);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            let logs = await response.json();
+            const data = await response.json(); 
+let logs = data.logs;   // Ambil daftar log-nya
+const total = data.total; // Ambil angka total-nya
 
             // --- BAGIAN FILTER / SEARCH ---
             const keyword = searchInput.value.toLowerCase();
@@ -173,7 +175,7 @@
                  }
                  logContainer.innerHTML = '';
             } else {
-                 statusText.innerText = "DATA RECEIVED: " + logs.length + " PACKETS";
+                 statusText.innerText = "TOTAL INTERCEPTED: " + total + " PACKETS";
                  logContainer.innerHTML = ''; 
                  
                  logs.forEach(log => {

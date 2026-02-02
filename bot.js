@@ -1,64 +1,52 @@
-const dgram = require('dgram'); // Modul UDP (Bawaan Node.js)
-const axios = require('axios'); // Pengirim HTTP
+const dgram = require('dgram'); // Penerima Sinyal UDP (MikroTik)
+const axios = require('axios'); // Pengirim HTTP (Ke Vercel)
 
-// ==========================================
-// ⚠️ KONFIGURASI TARGET ⚠️
-// Ganti dengan URL Vercel Komandan yang sudah dideploy
-const TARGET_URL = 'https://nama-project-kamu.vercel.app/api/logs'; 
-const LISTENING_PORT = 5140;
-// ==========================================
+// =========================================================
+// ⚠️ GANTI INI DENGAN LINK VERCEL KAMU (TANPA SLASH DI BELAKANG)
+const TARGET_URL = 'https://log-server-five.vercel.app'; 
+const UDP_PORT = 5140; // Port Standar Syslog
+// =========================================================
 
 const server = dgram.createSocket('udp4');
 
 console.log('------------------------------------------------');
-console.log('   MIKROTIK TO VERCEL BRIDGE   ');
-console.log('   Mode: REALTIME MONITORING   ');
+console.log('   📡 RADAR MIKROTIK AKTIF   ');
+console.log(`   🎯 Target Server: ${TARGET_URL}`);
 console.log('------------------------------------------------');
 
-server.on('error', (err) => {
-  console.log(`[ERROR] Server error:\n${err.stack}`);
-  server.close();
-});
-
+// Saat menerima sinyal log dari MikroTik
 server.on('message', (msg, rinfo) => {
-  const rawLog = msg.toString();
-  
-  // Tampilkan di terminal laptop (biar kelihatan ada aktivitas)
-  console.log(`[RADAR] ${rinfo.address} >> ${rawLog.substring(0, 50)}...`);
+    const rawLog = msg.toString();
+    console.log(`[TERIMA] ${rinfo.address} >> ${rawLog.substring(0, 40)}...`);
 
-  // Kirim ke Database (Vercel/MongoDB)
-  kirimKePusat(rawLog, rinfo.address);
+    // Kirim data ke Vercel
+    kirimKePusat(rawLog, rinfo.address);
 });
-
-server.on('listening', () => {
-  const address = server.address();
-  console.log(`📡 RADAR AKTIF! Menunggu data di UDP Port ${address.port}`);
-  console.log(`💻 IP Laptop ini untuk di-setting di MikroTik: (Lihat ipconfig)`);
-});
-
-server.bind(LISTENING_PORT);
 
 async function kirimKePusat(logMentah, ipRouter) {
-    // 1. Analisa Level Log (Warna)
+    // 1. Analisa Level Bahaya
     let level = 'INFO';
     const txt = logMentah.toLowerCase();
     
-    if (txt.includes('error') || txt.includes('failure') || txt.includes('critical')) level = 'ERROR';
+    if (txt.includes('error') || txt.includes('failure')) level = 'ERROR';
     else if (txt.includes('warn') || txt.includes('firewall')) level = 'WARN';
-    else if (txt.includes('login') || txt.includes('user') || txt.includes('account')) level = 'AUTH';
+    else if (txt.includes('login') || txt.includes('user')) level = 'AUTH';
 
-    // 2. Bersihkan Pesan (Hapus header syslog <30> dst)
-    // Biasanya format: "<30> system,info,account ..." -> Kita ambil isinya saja
-    let cleanMsg = logMentah.replace(/<[0-9]+>/g, '').trim();
+    // 2. Bersihkan pesan (Buang kode <30>)
+    const cleanMsg = logMentah.replace(/<[0-9]+>/g, '').trim();
 
     try {
-        // Tembak ke API Vercel
-        await axios.post(TARGET_URL, {
+        await axios.post(`${TARGET_URL}/api/logs`, {
             level: level,
             message: cleanMsg,
             ip: ipRouter
         });
     } catch (error) {
-        console.error(`[GAGAL KIRIM] ${error.message}`);
+        console.error(`[GAGAL KIRIM] Server Vercel Menolak: ${error.message}`);
     }
 }
+
+server.bind(UDP_PORT, () => {
+    console.log(`✅ MENUNGGU LOG DI PORT: ${UDP_PORT}`);
+    console.log(`⚠️  Setting MikroTik Remote Address ke IP Laptop ini!`);
+});
