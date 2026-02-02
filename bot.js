@@ -27,10 +27,28 @@ async function kirimKePusat(logMentah, ipRouter) {
     // 1. Analisa Level Bahaya
     let level = 'INFO';
     const txt = logMentah.toLowerCase();
-    
-    if (txt.includes('error') || txt.includes('failure')) level = 'ERROR';
-    else if (txt.includes('warn') || txt.includes('firewall')) level = 'WARN';
-    else if (txt.includes('login') || txt.includes('user')) level = 'AUTH';
+    //logika sortir
+    if (txt.includes('error') || txt.includes('failure') || txt.includes('critical')) {
+        level = 'CRITICAL'; // Merah Tua (Bahaya)
+    } 
+    else if (txt.includes('logged in')) {
+        level = 'LOGIN_SUCCESS'; // Hijau Neon (Ada yang masuk)
+    }
+    else if (txt.includes('login failure') || txt.includes('invalid user')) {
+        level = 'LOGIN_FAIL'; // Merah (Ada yang coba bobol)
+    }
+    else if (txt.includes('logged out')) {
+        level = 'LOGOUT'; // Kuning (Target pergi)
+    }
+    else if (txt.includes('icmp') || txt.includes('ping') || txt.includes('firewall')) {
+        level = 'TRAFFIC'; // Biru (Lalulintas data)
+    }
+    else if (txt.includes('dhcp') || txt.includes('assigned')) {
+        level = 'NETWORK'; // Ungu (Perangkat connect)
+    }
+    else if (txt.includes('interface') || txt.includes('link up') || txt.includes('link down')) {
+        level = 'SYSTEM'; // Putih (Status Kabel)
+    }
 
     // 2. Bersihkan pesan (Buang kode <30>)
     const cleanMsg = logMentah.replace(/<[0-9]+>/g, '').trim();

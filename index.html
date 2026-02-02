@@ -183,10 +183,17 @@ const total = data.total; // Ambil angka total-nya
                     logEntry.className = 'log-entry';
                     
                     let color = '#00ff00'; 
-                    if(log.level === 'WARN') color = '#ffcc00'; 
-                    if(log.level === 'ERROR' || log.status >= 500) color = '#ff3333'; 
-                    
-                    logEntry.style.color = color;
+                    //PALET WARNA
+                    if (log.level === 'CRITICAL') color = '#ff0000';      // MERAH DARAH
+    if (log.level === 'LOGIN_FAIL') color = '#ff3333';    // MERAH TERANG
+    if (log.level === 'WARN') color = '#ffcc00';          // KUNING
+    if (log.level === 'LOGOUT') color = '#ffcc00';        // KUNING
+    if (log.level === 'TRAFFIC') color = '#00ccff';       // BIRU CYAN (Ping)
+    if (log.level === 'NETWORK') color = '#d633ff';       // UNGU NEON (DHCP)
+    if (log.level === 'SYSTEM') color = '#ffffff';        // PUTIH
+    if (log.level === 'LOGIN_SUCCESS') color = '#00ff00'; // HIJAU MATRIX
+
+    logEntry.style.color = color;
                     
                     let timeStr = "UNKNOWN";
                     try { timeStr = new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false}); } catch(e) {}
