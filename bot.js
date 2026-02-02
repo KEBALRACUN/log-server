@@ -19,7 +19,7 @@ server.on('message', (msg, rinfo) => {
     const rawLog = msg.toString();
     console.log(`[TERIMA] ${rinfo.address} >> ${rawLog.substring(0, 40)}...`);
 
-    // Kirim data ke Vercel
+    // Kirim data ke Verce
     kirimKePusat(rawLog, rinfo.address);
 });
 
