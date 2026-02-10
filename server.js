@@ -2,10 +2,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs'); // Tambahkan ini
 require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Gunakan env port Vercel
 
 app.use(cors());
 app.use(express.json());
@@ -16,48 +17,39 @@ const connectDB = async () => {
     if (isConnected) return;
     try {
         const db = await mongoose.connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 5000, 
-            socketTimeoutMS: 45000,
+            // Opsi timeout dihapus karena mongoose versi baru sudah otomatis
+            bufferCommands: false, // Penting untuk serverless
         });
         isConnected = db.connections[0].readyState;
         console.log("✅ DATABASE: Connected");
     } catch (error) { console.log("❌ DB Error:", error); }
 };
 
-// Skema Database (Kita sesuaikan agar cocok dengan MikroTik)
+// Skema Database
 const logSchema = new mongoose.Schema({
-    level: String,      // INFO, WARN, ERROR, AUTH
-    message: String,    // Pesan log asli
-    ip: String,         // IP Router / Hacker
+    level: String,
+    message: String,
+    ip: String,
     timestamp: { type: Date, default: Date.now }
 });
-const Log = mongoose.model('Log', logSchema);
-
-// --- LOGGER OTOMATIS (Hanya untuk akses web, bukan log MikroTik) ---
-app.use(async (req, res, next) => {
-    // Jangan catat request yang menuju API Log (biar gak double/looping)
-    if (req.url.includes('/api/logs')) return next();
-    if (req.url.includes('favicon')) return next();
-
-    const start = Date.now();
-    res.on('finish', async () => {
-        // Ini mencatat aktivitas User yang buka dashboard (bukan log router)
-        // Opsional, bisa dihapus kalau mau hemat database
-    });
-    next();
-});
+const Log = mongoose.models.Log || mongoose.model('Log', logSchema); // Cek model exist dulu
 
 // --- ROUTES HALAMAN ---
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+// [PERBAIKAN] Membaca index.html secara sinkronus agar path terbaca di Vercel
+app.get('/', (req, res) => {
+    const htmlPath = path.join(process.cwd(), 'index.html'); // Gunakan process.cwd() untuk Vercel
+    try {
+        const html = fs.readFileSync(htmlPath, 'utf8');
+        res.send(html);
+    } catch (err) {
+        res.status(500).send('Error loading dashboard: ' + err.message);
+    }
+});
 
-// --- API UTAMA (JANTUNG OPERASI) ---
-
-// 1. TERIMA DATA DARI BRIDGE (POST)
-// Ini adalah pintu masuk data dari Laptop -> Vercel
+// --- API UTAMA ---
 app.post('/api/logs', async (req, res) => {
     await connectDB();
     const { level, message, ip } = req.body;
-
     try {
         await Log.create({
             level: level || 'INFO',
@@ -71,37 +63,27 @@ app.post('/api/logs', async (req, res) => {
     }
 });
 
-// 2. KIRIM DATA KE DASHBOARD (GET)
-// 2. KIRIM DATA KE DASHBOARD (GET)
-// [UPGRADED] Sekarang mengirim Total Count juga
 app.get('/api/logs', async (req, res) => {
     try {
         await connectDB();
-        
-        // Ambil data log (tetap batasi 50 biar ringan)
         const logs = await Log.find().sort({ timestamp: -1 }).limit(50).lean();
-        
-        // Hitung TOTAL SEMUA data di database
         const totalCount = await Log.countDocuments(); 
-
-        // Kirim paket gabungan (Data + Total)
-        res.json({ 
-            logs: logs, 
-            total: totalCount 
-        });
-        
+        res.json({ logs: logs, total: totalCount });
     } catch (err) { 
-        console.error(err);
         res.json({ logs: [], total: 0 }); 
     }
 });
 
-// 3. HAPUS LOG (CLEAR)
 app.delete('/api/logs/clear', async (req, res) => {
     await connectDB();
     await Log.deleteMany({});
     res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`🚀 SERVER READY`));
+// Export app untuk Vercel
 module.exports = app;
+
+// Hanya listen jika dijalankan lokal (bukan di Vercel)
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`🚀 SERVER READY ON PORT ${PORT}`));
+}
